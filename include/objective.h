@@ -17,14 +17,15 @@ protected:
     size_t kk;
     std::shared_ptr<spdlog::logger> console;
     Eigen::VectorXd label;
-    Eigen::MatrixXd xx, mj, sj;
+    Eigen::MatrixXd xx;
+    Eigen::VectorXd mj, sj;
 public:
 
-    objective_function(const Eigen::MatrixXd& x, const Eigen::MatrixXd& label, const Eigen::MatrixXd& mj, const Eigen::MatrixXd& sj);
+    objective_function(const Eigen::MatrixXd& x, const Eigen::VectorXd& label, const Eigen::VectorXd& mj, const Eigen::VectorXd& sj);
 
     virtual ~objective_function();
 
-    std::pair<int, size_t> run(Eigen::MatrixXd& w0);
+    std::pair<int, size_t> run(Eigen::VectorXd& w0);
 
     Eigen::VectorXd predict(const Eigen::VectorXd& wj);
 

@@ -85,6 +85,7 @@ void Stage2<T, S>::run()
             iss.clear();
 
             bool nolabel = true;
+            bool noweight = true;
             bool needlabel = true;
             std::string ns("");
             double label = 0.0;
@@ -112,6 +113,8 @@ void Stage2<T, S>::run()
                             console->error("Error reading label. Skipping line #{0}.", lineno);
                             break;
                         }
+                    } else if(noweight) {
+                        noweight = false;
                     } else {
                         //FEATURE
                         int sz;

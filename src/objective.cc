@@ -41,8 +41,8 @@ std::vector<std::string> lbfgserr = {{
     "The current search direction increases the objective function value. LBFGSERR_INCREASEGRADIENT" }};
 
 objective_function::objective_function(
-    const Eigen::MatrixXd& x, const Eigen::MatrixXd& label,
-    const Eigen::MatrixXd& mj, const Eigen::MatrixXd& sj
+    const Eigen::MatrixXd& x, const Eigen::VectorXd& label,
+    const Eigen::VectorXd& mj, const Eigen::VectorXd& sj
 ):  w(0), console(spdlog::get("console")), label(label), xx(x), mj(mj), sj(sj)
 { }
 
@@ -54,7 +54,7 @@ objective_function::~objective_function()
     }
 }
 
-std::pair<int, size_t> objective_function::run(MatrixXd& w0)
+std::pair<int, size_t> objective_function::run(VectorXd& w0)
 {
     lbfgsfloatval_t fx;
     lbfgsfloatval_t *w = lbfgs_malloc(w0.size());
@@ -101,7 +101,7 @@ std::pair<int, size_t> objective_function::run(MatrixXd& w0)
 }
 
 VectorXd objective_function::predict(const VectorXd& wj) {
-    return (1.0/(1.0 + (-(xx*wj)).array().exp())).matrix();
+    return (1.0 + (-(xx*wj)).array().exp()).inverse().matrix();
 }
 
 MatrixXd objective_function::predict_sample(const size_t n) {
@@ -117,7 +117,7 @@ MatrixXd objective_function::predict_sample(const size_t n) {
             auto params(std::normal_distribution<double>::param_type(mj(j), 1.0/sj(j)));
             wj(j) = d(gen, params);
         }
-        auto pred = (1.0/(1.0 + (-(xx*wj)).array().exp())).matrix();
+        auto pred = (1.0 + (-(xx*wj)).array().exp()).inverse().matrix();
         ret.col(i) = pred.transpose();
     }
     return ret;
@@ -134,20 +134,14 @@ lbfgsfloatval_t objective_function::evaluate(
 
     Map<VectorXd> grad(g, wj.size());
 
-    VectorXd wx(-(xx*wj));
+    ArrayXd wj_mjnz = (wj - mj).array();
 
-    auto wj_mjnz = (wj - mj).array();
+    ArrayXd ui = ((-(xx*wj)).array().exp() + 1.0).inverse();
 
-    auto uj = ((-wx).array().exp()+1.0).inverse().matrix();
-
-    grad = (sj.array()*wj_mjnz).matrix()
-        - (xx.transpose()*((uj.array()+label.array()-1).matrix()));
-
-    auto ui = (wx.array().exp() + 1.0).inverse();
+    grad = (sj.array()*wj_mjnz).matrix() + (xx.transpose()*((ui-label.array()).matrix()));
 
     const double eps = 1e-20;
-    return 0.5 * (sj.array()*wj_mjnz.square()).sum() - (label.array()*(ui.max(eps).log()) + (1.0 - label.array())*((1.0 - ui).max(eps).log())).sum();
-
+    return 0.5 * sj.transpose().dot(wj_mjnz.square().matrix()) - (label.array() == 0.0).select(1.0 - ui, ui).max(eps).min(1.0-eps).log().sum();
 }
 
 int objective_function::progress(

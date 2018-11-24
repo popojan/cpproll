@@ -28,7 +28,7 @@ Stage3<T>::Stage3(
     mj = VectorXd::Zero(opts.N, 1);
     sj.resize(opts.N);
     sj = VectorXd::Zero(opts.N, 1);
-    sj = ((sj.array() + 1.0)*opts.lambda).matrix();
+    sj = ((sj.array() + 1.0)/opts.lambda).matrix();
     logloss_sum = 0.0;
     logloss_asum = 0.0;
     logloss_aden = 0.0;
@@ -75,13 +75,13 @@ void Stage3<T>::run() {
         lineno += batch.x.rows();
         const size_t K = batch.x.cols(), k = batch.x.rows();
 
-        MatrixXd w, mjt, sjt;
-        w.resize(K, 1);
-        mjt.resize(K, 1);
-        sjt.resize(K, 1);
+        VectorXd w, mjt, sjt;
+        w.resize(K);
+        mjt.resize(K);
+        sjt.resize(K);
         if(!opts.svmlight.empty()) {
             for(size_t j = 0; j < k; ++j) {
-                svmout << batch.labels(j, 0);
+                svmout << batch.labels(j);
                 for(auto nit = batch.nzf.begin(); nit != batch.nzf.end(); ++nit) {
                     svmout << " " << nit->first << ":" << batch.x(j, nit->second);
                 }
@@ -92,8 +92,9 @@ void Stage3<T>::run() {
         for(auto bit = batch.nzf.begin(); bit != batch.nzf.end(); ++bit) {
             size_t idx = bit->second;
             size_t ii = bit->first;
-            w(idx) = mj(ii);// + 1e-6;
-            mjt(idx) = mj(ii);
+            double wii = mj(ii);
+            w(idx) = wii;
+            mjt(idx) = wii;
             sjt(idx) = sj(ii);
             if(opts.standardize) {
                 for(int j = 0; j < batch.x.rows(); ++j) {
@@ -105,7 +106,7 @@ void Stage3<T>::run() {
                         auto mean = rs.mean(ii);
                         auto dev = rs.dev(ii);
                         if(dev > 0)
-                            batch.x.col(idx) = (batch.x.col(idx).array() - mean)/dev + 1.0;
+                            batch.x(j, idx) = (val - mean)/dev + 1.0;
                     }
                 }
             }
@@ -174,8 +175,9 @@ void Stage3<T>::run() {
         }
 
         const double eps = 1e-15;
-        pred = pred.array().min(1.0 - eps).max(eps);
-        double ll = (batch.labels.array() * pred.array().log() + (1.0-batch.labels.array())*(1.0 - pred.array()).log()).sum();
+
+        double ll = (batch.labels.array() == 0.0).select(1.0-pred.array(), pred.array()).min(1.0 - eps).max(eps).log().sum();
+
         logloss_aden += k;
         logloss_den += k;
         logloss_sum -= ll;
@@ -196,9 +198,10 @@ void Stage3<T>::run() {
             if(ret.first == 0) {
                 auto ui = f.predict(w);
                 auto uio = (ui.array()*(1.0 - ui.array()));
+                VectorXd s(sjt + batch.x.array().square().matrix().transpose()*uio.matrix());
                 for(auto it = batch.nzf.begin(); it != batch.nzf.end(); ++it) {
-                    mj(it->first) = w(it->second, 0);
-                    sj(it->first) = sjt(it->second, 0) + (batch.x.col(it->second).array().square()*uio).sum();
+                    mj(it->first) = w(it->second);
+                    sj(it->first) = s(it->second);
                 }
             }
         }
