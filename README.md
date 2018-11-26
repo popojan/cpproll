@@ -1,3 +1,5 @@
+See original [blog post](http://tech.adroll.com/blog/data-science/2017/03/06/thompson-sampling-bayesian-factorization-machines.html).
+
 ## Dependencies
 
 ### Eigen3
@@ -18,7 +20,7 @@ nefungovalo v GCC 3.7, funguje v 6.3.1
 
 viz https://github.com/PatWie/CppNumericalSolvers/issues/73
 
-deprecated, liblbfgs je rychlej≈√
+deprecated, liblbfgs je rychlej√Ö√É
 
 https://github.com/PatWie/CppNumericalSolvers/
 
