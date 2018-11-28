@@ -77,9 +77,9 @@ std::pair<int, size_t> objective_function::run(VectorXd& w0)
      */
     lbfgs_parameter_t params;
     lbfgs_parameter_init(&params);
-    //params.max_linesearch = 1e7;
-    params.epsilon = 1e-3;
-    params.linesearch = LBFGS_LINESEARCH_BACKTRACKING_ARMIJO;
+
+    params.epsilon = 1e-2;
+    params.linesearch = LBFGS_LINESEARCH_DEFAULT;
 
     int ret = lbfgs(w0.size(), w, &fx, _evaluate, _progress, this, &params);
 
@@ -134,14 +134,15 @@ lbfgsfloatval_t objective_function::evaluate(
 
     Map<VectorXd> grad(g, wj.size());
 
-    ArrayXd wj_mjnz = (wj - mj).array();
+    grad = (wj - mj);
 
-    ArrayXd ui = ((-(xx*wj)).array().exp() + 1.0).inverse();
-
-    grad = (sj.array()*wj_mjnz).matrix() + (xx.transpose()*((ui-label.array()).matrix()));
+    ArrayXd ui((((-(xx*wj)).array().exp() + 1.0).inverse()));
 
     const double eps = 1e-20;
-    return 0.5 * sj.transpose().dot(wj_mjnz.square().matrix()) - (label.array() == 0.0).select(1.0 - ui, ui).max(eps).min(1.0-eps).log().sum();
+    double ret = 0.5 * (sj.array()*grad.array().square()).sum() - (label.array() == 0.0).select(1.0 - ui, ui).max(eps).min(1.0-eps).log().sum();
+    grad = (sj.array()*grad.array()).matrix() + xx.transpose()*(ui-label.array()).matrix(); //grad
+    return ret;
+
 }
 
 int objective_function::progress(
