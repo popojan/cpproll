@@ -4,152 +4,107 @@
 #include <limits>
 #include <random>
 #include "stage2.h"
+#include <optim.hpp>
+#include <limits>
 
-using namespace Eigen;
+inline arma::mat sigm(const arma::mat& X) {
+    return 1.0 / (1.0 + arma::exp(-X));
+}
 
-std::vector<std::string> lbfgserr = {{
-    "LBFGSERR_UNKNOWNERROR",
-    "Logic error. LBFGSERR_LOGICERROR",
-    "Insufficient memory. LBFGSERR_OUTOFMEMORY",
-    "The minimization process has been canceled. LBFGSERR_CANCELED",
-    "Invalid number of variables specified. LBFGSERR_INVALID_N",
-    "Invalid number of variables (for SSE) specified. LBFGSERR_INVALID_N_SSE",
-    "The array x must be aligned to 16 (for SSE). LBFGSERR_INVALID_X_SSE",
-    "Invalid parameter lbfgs_parameter_t::epsilon specified. LBFGSERR_INVALID_EPSILON",
-    "Invalid parameter lbfgs_parameter_t::past specified. LBFGSERR_INVALID_TESTPERIOD",
-    "Invalid parameter lbfgs_parameter_t::delta specified. LBFGSERR_INVALID_DELTA",
-    "Invalid parameter lbfgs_parameter_t::linesearch specified. LBFGSERR_INVALID_LINESEARCH",
-    "Invalid parameter lbfgs_parameter_t::max_step specified. LBFGSERR_INVALID_MINSTEP",
-    "Invalid parameter lbfgs_parameter_t::max_step specified. LBFGSERR_INVALID_MAXSTEP",
-    "Invalid parameter lbfgs_parameter_t::ftol specified. LBFGSERR_INVALID_FTOL",
-    "Invalid parameter lbfgs_parameter_t::wolfe specified. LBFGSERR_INVALID_WOLFE",
-    "Invalid parameter lbfgs_parameter_t::gtol specified. LBFGSERR_INVALID_GTOL",
-    "Invalid parameter lbfgs_parameter_t::xtol specified. LBFGSERR_INVALID_XTOL",
-    "Invalid parameter lbfgs_parameter_t::max_linesearch specified. LBFGSERR_INVALID_MAXLINESEARCH",
-    "Invalid parameter lbfgs_parameter_t::orthantwise_c specified. LBFGSERR_INVALID_ORTHANTWISE",
-    "Invalid parameter lbfgs_parameter_t::orthantwise_start specified. LBFGSERR_INVALID_ORTHANTWISE_START",
-    "Invalid parameter lbfgs_parameter_t::orthantwise_end specified. LBFGSERR_INVALID_ORTHANTWISE_END",
-    "The line-search step went out of the interval of uncertainty. LBFGSERR_OUTOFINTERVAL",
-    "A logic error occurred; alternatively, the interval of uncertainty became too small. LBFGSERR_INCORRECT_TMINMAX",
-    "A rounding error occurred; alternatively, no line-search step satisfies the sufficient decrease and curvature conditions. LBFGSERR_ROUNDING_ERROR",
-    "The line-search step became smaller than lbfgs_parameter_t::min_step. LBFGSERR_MINIMUMSTEP",
-    "The line-search step became larger than lbfgs_parameter_t::max_step. LBFGSERR_MAXIMUMSTEP",
-    "The line-search routine reaches the maximum number of evaluations. LBFGSERR_MAXIMUMLINESEARCH",
-    "The algorithm routine reaches the maximum number of iterations. LBFGSERR_MAXIMUMITERATION",
-    "Relative width of the interval of uncertainty is at most lbfgs_parameter_t::xtol. LBFGSERR_WIDTHTOOSMALL",
-    "A logic error (negative line-search step) occurred. LBFGSERR_INVALIDPARAMETERS",
-    "The current search direction increases the objective function value. LBFGSERR_INCREASEGRADIENT" }};
+double blr(const arma::vec& vals_inp, void* opt_data) {
+    return blr_fn_whess(vals_inp, 0, 0, opt_data);
+
+}
+double blr_fn(const arma::vec& vals_inp, arma::vec* grad_out, void* opt_data) {
+    return blr_fn_whess(vals_inp, grad_out, 0, opt_data);
+}
+
+double blr_fn_whess(const arma::vec& vals_inp, arma::vec* grad_out, arma::mat* hess_out, void* opt_data)
+{
+    objective_function* objfn_data = reinterpret_cast<objective_function*>(opt_data);
+    objfn_data->kk += 1;
+
+    auto console = objfn_data->console;
+
+    const arma::vec& Y = objfn_data->Y;
+    const arma::mat& X = objfn_data->X;
+    const arma::vec& sj = objfn_data->sj;
+    const arma::vec& mj = objfn_data->mj;
+
+    arma::vec mu = sigm(X*vals_inp);//, 1e-8, 1.0-1e-8);
+
+    const double regul_term = 0.5 * arma::accu(sj % arma::square(vals_inp - mj));
+
+    const double obj_val = regul_term - arma::accu(Y%arma::log(mu) + (1.0-Y)%arma::log(1.0-mu) );
+
+    arma::vec dreg = sj % (vals_inp - mj);
+    if(grad_out) {
+
+        *grad_out = dreg + X.t() * (mu - Y);
+
+    }
+    if (hess_out) {
+        arma::mat dd = arma::join_rows(dreg, arma::ones(dreg.size()));
+        arma::mat ddr = arma::join_rows(arma::ones(dreg.size()),dreg);
+        arma::mat hr = dd*ddr.t();
+        hr.diag() = sj;
+        //hr -= arma::diagmat(arma::diagvec(hr) - sj);
+        arma::mat S = arma::diagmat(mu%(1.0-mu));
+        *hess_out = X.t() * S * X + hr;
+    }
+
+    return obj_val;
+}
 
 objective_function::objective_function(
-    const Eigen::MatrixXd& x, const Eigen::VectorXd& label,
-    const Eigen::VectorXd& mj, const Eigen::VectorXd& sj
-):  w(0), console(spdlog::get("console")), label(label), xx(x), mj(mj), sj(sj)
-{ }
+    const arma::mat& x, const arma::vec& y,
+    const arma::vec& mj, const arma::vec& sj
+):  kk(0), X(x), Y(y), mj(mj), sj(sj), console(spdlog::get("console"))
+{
+}
 
 objective_function::~objective_function()
 {
-    if (w != NULL) {
-        lbfgs_free(w);
-        w = NULL;
-    }
 }
 
-std::pair<int, size_t> objective_function::run(VectorXd& w0)
+std::pair<int, size_t> objective_function::run(const arma::vec& w0)
 {
-    lbfgsfloatval_t fx;
-    lbfgsfloatval_t *w = lbfgs_malloc(w0.size());
 
-    if (w == NULL) {
-        printf("ERROR: Failed to allocate a memory block for variables.\n");
-        return std::pair<int, size_t>(1, 0);
-    }
+    w = w0; //arma::randu(w0.n_rows)/w0.n_rows;
 
-    /* Initialize the variables. */
-    lbfgsfloatval_t *pw = w;
-    for(int i = 0; i < w0.size(); ++i) {
-        *pw = w0(i);
-        ++pw;
-    }
-
-    /*
-        Start the L-BFGS optimization; this will invoke the callback functions
-        evaluate() and progress() when necessary.
-     */
-    lbfgs_parameter_t params;
-    lbfgs_parameter_init(&params);
-
-    params.epsilon = 1e-2;
-    params.linesearch = LBFGS_LINESEARCH_DEFAULT;
-
-    int ret = lbfgs(w0.size(), w, &fx, _evaluate, _progress, this, &params);
-
-    /* Report the result. */
-    if(ret >= 0) {
-        console->debug("L-BFGS optimization terminated with status code = {0}, fx = {1}, iterations = {2}", ret, fx, kk);
+    bool success = optim::newton(w, blr_fn_whess, this);
+    //console->warn("{0}",std::sqrt(arma::accu(arma::square(w-w1))));
+    if (success) {
+        console->debug("CG optimization successfully terminated.");
     }
     else {
-        console->warn("L-BFGS error {0} {3}, fx = {1}, iterations = {2}", ret, fx, kk, lbfgserr[ret + 1024]);
+        console->warn("CG error.");
     }
-    for(int i = 0; i < w0.size(); ++i) {
-        w0(i) = w[i];
-    }
-    if (w != NULL) {
-        lbfgs_free(w);
-        w = NULL;
-    }
-    return std::pair<int, size_t>(ret, kk);
+
+    return std::pair<int, size_t>(1-static_cast<int>(success), kk);
+
 }
 
-VectorXd objective_function::predict(const VectorXd& wj) {
-    return (1.0 + (-(xx*wj)).array().exp()).inverse().matrix();
+
+arma::vec objective_function::predict(const arma::vec& wj) {
+    return sigm(X * wj);
 }
 
-MatrixXd objective_function::predict_sample(const size_t n) {
+arma::mat objective_function::predict_sample(const size_t n) {
     std::random_device rd{};
     std::mt19937 gen{rd()};
     std::normal_distribution<double> d;
 
-    MatrixXd ret(MatrixXd::Zero(xx.rows(), n));
+    arma::mat ret = arma::mat(X.n_rows, n);
     for(size_t i = 0; i < n; ++i) {
-        VectorXd wj;
-        wj.resize(mj.size());
-        for(long int j = 0; j < wj.size(); ++j) {
+        arma::vec wj = arma::vec(mj.n_rows);
+        for(arma::uword j = 0; j < wj.n_rows; ++j) {
             auto params(std::normal_distribution<double>::param_type(mj(j), 1.0/sj(j)));
             wj(j) = d(gen, params);
         }
-        auto pred = (1.0 + (-(xx*wj)).array().exp()).inverse().matrix();
-        ret.col(i) = pred.transpose();
+        arma::vec pred = sigm(X * wj);
+        ret.col(i) = pred.t();
     }
     return ret;
 }
 
-lbfgsfloatval_t objective_function::evaluate(
-    const lbfgsfloatval_t *x,
-    lbfgsfloatval_t *g,
-    const int n,
-    const lbfgsfloatval_t step
-    )
-{
-    Map<const VectorXd> wj(x, xx.cols());
-
-    Map<VectorXd> grad(g, wj.size());
-
-    grad = (wj - mj);
-
-    ArrayXd ui((((-(xx*wj)).array().exp() + 1.0).inverse()));
-
-    const double eps = 1e-20;
-    double ret = 0.5 * (sj.array()*grad.array().square()).sum() - (label.array() == 0.0).select(1.0 - ui, ui).max(eps).min(1.0-eps).log().sum();
-    grad = (sj.array()*grad.array()).matrix() + xx.transpose()*(ui-label.array()).matrix(); //grad
-    return ret;
-
-}
-
-int objective_function::progress(
-    const lbfgsfloatval_t *x, const lbfgsfloatval_t *g, const lbfgsfloatval_t fx,
-    const lbfgsfloatval_t xnorm, const lbfgsfloatval_t gnorm, const lbfgsfloatval_t step,
-    int n, int k, int ls)
-{
-    kk = k;
-    return 0;
-}

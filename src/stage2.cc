@@ -4,8 +4,6 @@
 
 #include <regex>
 
-using namespace Eigen;
-
 extern volatile bool interrupted;
 
 template <class T, class S> Stage2<T, S>::Stage2(
@@ -103,17 +101,22 @@ void Stage2<T, S>::run()
 
                 if(s[0] != '|') {
                     if(nolabel) {
-                        issv.str(s);
+                        int sz;
+                        char** fsnv = splitZeroCopyInPlace(s, ';', &sz);
+                        console->trace("In-place string split size = {0}: {1}", sz, fsnv[0]);
+                        issv.str(fsnv[sz-1]);
                         issv.clear();
                         if(issv >> label){
                             if(label < 0.0) label = 0.0; 
                             console->debug("Label [{0}]", label);
+                            free(fsnv);
                         }
                         else if(needlabel){
                             console->error("Error reading label. Skipping line #{0}.", lineno);
+                            free(fsnv);
                             break;
                         }
-                    } else if(noweight) {
+                    } else if (noweight){
                         noweight = false;
                     } else {
                         //FEATURE
@@ -333,18 +336,17 @@ void Stage2<T, S>::run()
 
             const size_t K = nzf.size(), k = batchbuf.size();
 
-            auto& x = batch.x;
-            x.resize(k, K);
-            x = MatrixXd::Zero(k, K);
-            auto& labels = batch.labels;
-            labels.resize(k, 1);
+            arma::mat& x = batch.x;
+            x = arma::zeros(k, K);
+            arma::vec& labels = batch.labels;
+            labels = arma::zeros(k, 1);
 
             //vyplneni dense matice nenulovych featur v batchi dle mapovani nzf
             for(auto bit = batchbuf.begin(); bit != batchbuf.end(); ++bit) {
                 auto& fids(bit->second);
                 double label(bit->first);
                 size_t j = bit - batchbuf.begin();
-                labels(j, 0) = label;
+                labels(j) = label;
                 for(size_t i = 0; i < fids.size(); ++i) {
                     x(j, nzf[fids[i].first]) = fids[i].second;
                     //console->info("{0} {1}", j, nzf[fids[i].first]);

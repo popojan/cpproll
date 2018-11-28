@@ -33,6 +33,8 @@ int main(int argc, char* argv[]) {
             .doc("size of feature indices created by the hashing trick"),
         (option("-B", "--batch") & integer("size", opts.batch))
             .doc("number of examples in each training batch (experimental)"),
+        (option("-C", "--intercept") & value("intercept", opts.intercept))
+            .doc("initital intercept weight"),
         (option("--seed") & integer("seed", opts.seed))
             .doc("murmur3 hash seed used for the hashing trick"),
         (option("--predict_sample") & integer("size", opts.npredict))
@@ -77,12 +79,11 @@ int main(int argc, char* argv[]) {
     );
 
     if(parse(argc, argv, cli)) {
-        auto console = spdlog::stdout_color_mt("console");
+        auto console = spdlog::stderr_color_mt("console");
 
         spdlog::set_level(spdlog::level::from_str(opts.verbose));
 
         console->info("Welcome to Cuddly T-Rex!");
-        console->debug("L-BFGS precision [{0}]", LBFGS_FLOAT);
         console->debug("Setting n_jobs = {0}", opts.jobs);
 
         console->debug("Input data file [{0}]", opts.files.size());
