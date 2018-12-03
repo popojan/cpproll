@@ -80,3 +80,6 @@ embedded
 * [eigen matrix serialization](https://stackoverflow.com/questions/18382457/eigen-and-boostserialize)
 * [accurate running variance](https://www.johndcook.com/blog/standard_deviation/)
 * [argsort](https://stackoverflow.com/questions/1577475/c-sorting-and-keeping-track-of-indexes)
+
+## Avazu Late Submissions
+TODO
