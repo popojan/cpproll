@@ -3,15 +3,15 @@
 Simple machine learning tool optimizing logistic loss, coded according to Adroll [blog post](http://tech.adroll.com/blog/data-science/2017/03/06/thompson-sampling-bayesian-factorization-machines.html) and inspired by [vowpal wabbit](https://github.com/VowpalWabbit/vowpal_wabbit) data format and command line options. Useful for larger click prediction tasks. Usually beats vowpal on our data both in AUC and logloss, but training is much slower and throughput decays in time.
 
 ### Features
-* feature hashing with adjustable seed 
-* arbitrary feature interactions
-* logloss and roc auc reporting 
-* explain predictions
-* save model and continue training later
-* multi-threaded parsing
-* running mean and variance standardization
-* fast export of hashed features in svmlight format
-* save model and report metrics even after user termination
+*   feature hashing with adjustable seed 
+*   arbitrary feature interactions
+*   logloss and roc auc reporting 
+*   explain predictions
+*   save model and continue training later
+*   multi-threaded parsing
+*   running mean and variance standardization
+*   fast export of hashed features in svmlight format
+*   save model and report metrics even after user termination
 
 ### Sample call
 ```
@@ -49,37 +49,37 @@ lightweight template library for linear algebra
 
 from boost-bloom-filters (TODO find elsewhere)
 
-https://github.com/queertypes/boost-bloom-filters.git for murmur3 hash
+<https://github.com/queertypes/boost-bloom-filters.git> for murmur3 hash
 
 ### liblbfgs
 
-https://github.com/chokkan/liblbfgs fast C optimization lib
+<https://github.com/chokkan/liblbfgs> fast C optimization lib
 
 ### clipp
 commandline options library
 
-https://github.com/muellan/clipp
+<https://github.com/muellan/clipp>
 
 ### spdlog
 logging library
 
-https://github.com/gabime/spdlog
+<https://github.com/gabime/spdlog>
 
 ### cppROC
 auROC calculation
 
-https://github.com/vbalnt/cppROC
+<https://github.com/vbalnt/cppROC>
 
 embedded
 
 
 ## Copy & paste credits
 
-* [parse using boost.spirit.Qi](https://stackoverflow.com/questions/5678932/fastest-way-to-read-numerical-values-from-text-file-in-c-double-in-this-case)
-* [multithreaded parsing](https://codereview.stackexchange.com/questions/84109/a-multi-threaded-producer-consumer-with-c11)
-* [eigen matrix serialization](https://stackoverflow.com/questions/18382457/eigen-and-boostserialize)
-* [accurate running variance](https://www.johndcook.com/blog/standard_deviation/)
-* [argsort](https://stackoverflow.com/questions/1577475/c-sorting-and-keeping-track-of-indexes)
+*   [parse using boost.spirit.Qi](https://stackoverflow.com/questions/5678932/fastest-way-to-read-numerical-values-from-text-file-in-c-double-in-this-case)
+*   [multithreaded parsing](https://codereview.stackexchange.com/questions/84109/a-multi-threaded-producer-consumer-with-c11)
+*   [eigen matrix serialization](https://stackoverflow.com/questions/18382457/eigen-and-boostserialize)
+*   [accurate running variance](https://www.johndcook.com/blog/standard_deviation/)
+*   [argsort](https://stackoverflow.com/questions/1577475/c-sorting-and-keeping-track-of-indexes)
 
 ## Avazu Late Submissions
 TODO
