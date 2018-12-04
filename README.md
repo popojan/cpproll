@@ -2,7 +2,7 @@
 
 Simple machine learning tool optimizing logistic loss, coded according to Adroll [blog post](http://tech.adroll.com/blog/data-science/2017/03/06/thompson-sampling-bayesian-factorization-machines.html) and inspired by [vowpal wabbit](https://github.com/VowpalWabbit/vowpal_wabbit) data format and command line options. Useful for larger click prediction tasks. Usually beats vowpal on our data both in AUC and logloss, but training is much slower and throughput decays in time.
 
-### Features
+## Features
 *   feature hashing with adjustable seed 
 *   arbitrary feature interactions
 *   logloss and roc auc reporting 
@@ -19,7 +19,7 @@ Simple machine learning tool optimizing logistic loss, coded according to Adroll
 ```
 
 ### Sample output
-```
+```text
 ...
 [10:07:12.446] [info]   0.065375   0.063594     0.0049    0     231 feat    1795624 ex    10063 ex/s   12 it/ex
 [10:07:13.948] [info]   0.065411   0.069606     0.0338    0     163 feat    1811024 ex    10260 ex/s   12 it/ex
