@@ -65,16 +65,16 @@ float ROC::get95ErrorRate(){
 float ROC::getAreaUnderCurve(){
   // TODO - Implement this
   size_t size = TP.size();
-  float q1,q2,p1,p2;
+  float q1,q2;
   q1 = FP[0];
   q2 = TP[0];
   float area = 0.0;
   for(size_t i=1;i < size;++i){
-    p1 = FP[i];
-    p2 = TP[i];
+    float p1 = FP[i];
+    float p2 = TP[i];
     area += sqrt(pow( ((1-q1)+(1-p1))/2 * (q2-p2),2));
     q1=p1;
-    q2=p2;   
+    q2=p2;
   }
   return area;
 }
@@ -109,8 +109,6 @@ void ROC::getROCFromData(std::vector<std::pair<float,int> > data){
 	N++;
       }
   }
-  double f_i;
-  bool label;
   //init FP TP counters
   double FP = 0;
   double TP = 0;
@@ -118,8 +116,8 @@ void ROC::getROCFromData(std::vector<std::pair<float,int> > data){
   std::vector<std::pair<float,float> > R;
   //loop through all data
   for (size_t i = 0; i < L; i++) {
-    f_i = data[i].first;
-    label = data[i].second;
+    double f_i = data[i].first;
+    bool label = data[i].second;
     if (f_i != f_prev)
       {
 	// add points to roc curves

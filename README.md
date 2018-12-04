@@ -14,7 +14,7 @@ Simple machine learning tool optimizing logistic loss, coded according to Adroll
 *   save model and report metrics even after user termination
 
 ### Sample call
-```
+```bash
 ./roll -f model -j 4 -b 26 -v info --l2 0.01 --passes 1 -B 4 --log "o\^" -T 1500 --standardize -I "q*t,s*s,s*Q" train.vw
 ```
 
@@ -71,7 +71,6 @@ auROC calculation
 <https://github.com/vbalnt/cppROC>
 
 embedded
-
 
 ## Copy & paste credits
 

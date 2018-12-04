@@ -2,7 +2,6 @@
 
 from sklearn.datasets import make_classification
 import sys
-import random
 
 N1 = int(sys.argv[1])
 N2 = int(sys.argv[2])

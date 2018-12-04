@@ -4,7 +4,7 @@
 #include <clipp.h>
 #include <csignal>
 #include <spdlog/spdlog.h>
-
+#include <spdlog/sinks/stdout_color_sinks.h>
 #include "stage1.h"
 #include "stage2.h"
 #include "stage3.h"

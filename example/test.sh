@@ -1,10 +1,10 @@
 #!/bin/bash
 
-dir=`pwd`
-
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
-cd $DIR/../data
+DATA_DIR=$DIR/../data
+mkdir -p $DATA_DIR
+cd $DATA_DIR
 
 $DIR/../example/generate-dataset.py 20000 5000 666
 
