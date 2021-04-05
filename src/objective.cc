@@ -166,8 +166,7 @@ lbfgsfloatval_t objective_function::evaluate(
 
     ArrayXd ui((((-(xx*wj)).array().exp() + 1.0).inverse()));
 
-    const double eps = 1e-20; //TODO truncated
-    double ret = 0.5 * (sj.array()*grad.array().square()).sum() - (label.array() == 0.0).select(1.0 - ui, ui).log().sum();//;.max(eps).min(1.0-eps).log().sum();
+    double ret = 0.5 * (sj.array()*grad.array().square()).sum() - (label.array() == 0.0).select(1.0 - ui, ui).log().sum();
     grad = (sj.array()*grad.array()).matrix() + xx.transpose()*(ui-label.array()).matrix(); //grad
     return ret;
 

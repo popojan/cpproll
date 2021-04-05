@@ -1,5 +1,3 @@
 callgrind*
 data
-deps
-!deps/Makefile
 build

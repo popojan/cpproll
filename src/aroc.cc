@@ -114,12 +114,9 @@ void AROC::getAROCFromData(std::vector<std::pair<size_t,size_t> > data){
 	P+= data[j].first;
 	N+= data[j].second;
   }
-  double f_i;
-  bool label;
   //init FP TP counters
   double FP = 0;
   double TP = 0;
-  double f_prev = -std::numeric_limits<double>::infinity();
   std::vector<std::pair<float,float> > R;
   //loop through all data
   for (size_t i = 0; i < L; i++) {

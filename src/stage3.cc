@@ -68,7 +68,6 @@ std::vector<size_t> sort_indexes(const T &v) {
 template <class T>
 void Stage3<T>::run() {
     size_t lineno = 0ul;
-    int resetCount = 0;
     long int period = opts.period;
     auto start = std::chrono::steady_clock::now();
     size_t lineno0 = 0ul;
