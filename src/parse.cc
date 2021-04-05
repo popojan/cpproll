@@ -36,10 +36,10 @@ char** splitZeroCopyInPlace(char* s, char delimiter, int* size)
 
 double parse(std::string const& s)
 {
-    std::istringstream iss(s);
-    double d;
-    iss >> d;
-    return d;
+    //std::istringstream iss(s);
+    //double d;
+    //iss >> d;
+    //return d;
     typedef std::string::const_iterator It;
     It f(begin(s)), l(end(s));
     static boost::spirit::qi::rule<It, double> const p = strict_double;

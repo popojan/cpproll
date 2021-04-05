@@ -1,6 +1,7 @@
 #include "stage2.h"
 #include "parse.h"
 #include "hash.h"
+#include "hash_eigen.h"
 
 #include <regex>
 
@@ -44,11 +45,32 @@ void Stage2<T, S>::compile(std::regex& regex, const std::string& sregex, const s
     }
 }
 
+// trim from start (in place)
+static inline void ltrim(std::string &s) {
+    s.erase(s.begin(), std::find_if(s.begin(), s.end(), [](int ch) {
+        return !std::isspace(ch);
+    }));
+}
+
+// trim from end (in place)
+static inline void rtrim(std::string &s) {
+    s.erase(std::find_if(s.rbegin(), s.rend(), [](int ch) {
+        return !std::isspace(ch);
+    }).base(), s.end());
+}
+
+// trim from both ends (in place)
+static inline void trim(std::string &s) {
+    ltrim(s);
+    rtrim(s);
+}
+
+
 template <class T, class S>
 void Stage2<T, S>::run()
 {
-    murmur3<> h(static_cast<size_t>(opts.seed));
-    size_t lineno = 0;
+    murmur3 h(static_cast<size_t>(opts.seed));
+    size_t lineno = 0, baselineId = 0;
     std::istringstream iss;
     std::istringstream issv;
 
@@ -58,6 +80,7 @@ void Stage2<T, S>::run()
     std::unordered_map<size_t, std::string> nmap;
     std::vector<std::pair<double, std::vector<std::pair<size_t, double>>>> batchbuf;
     std::vector<std::string> descbuf;
+    std::vector<size_t> nllhashbuf;
 
     std::regex relogit, relog, redesc, reignore, rekeep;
 
@@ -87,6 +110,7 @@ void Stage2<T, S>::run()
             bool nolabel = true;
             bool noweight = true;
             bool needlabel = true;
+            bool hasns = false;
             std::string ns("");
             double label = 0.0;
 
@@ -96,13 +120,16 @@ void Stage2<T, S>::run()
             std::ostringstream ssdesc;
             size_t ufeats = 0ul;
 
+            std::vector<int> nll_hashing_ids;
+            std::vector<double> nll_hashing_values;
+
             fns.clear();
             for(int i = 0; i < size; ++i) {
                 char * s = strs[i];
                 console->trace("Parsing segment #{0} {1}", i, s);
 
                 if(s[0] != '|') {
-                    if(nolabel) {
+                    if(nolabel && !hasns) {
                         issv.str(s);
                         issv.clear();
                         if(issv >> label){
@@ -113,7 +140,7 @@ void Stage2<T, S>::run()
                             console->error("Error reading label. Skipping line #{0}.", lineno);
                             break;
                         }
-                    } else if(noweight) {
+                    } else if(noweight && !hasns) {
                         noweight = false;
                     } else {
                         //FEATURE
@@ -124,6 +151,14 @@ void Stage2<T, S>::run()
                         if(sz > 1) {
                             fv = parse(fsnv[1]);
                         }
+                        if(!std::isfinite(fv)) {
+                            console->warn("Invalid feature {0} value {1}. Line {2}. Skipping feature.", fsnv[0], fsnv[1], lineno);
+                            continue;
+                        }
+                        std::string fnn(fsnv[0]);
+                        trim(fnn);
+                        if(fnn.length() <= 0)
+                            continue;
                         std::string fn(ns);
                         fn += "^";
                         fn += fsnv[0];
@@ -145,6 +180,11 @@ void Stage2<T, S>::run()
                         }
 
                         free(fsnv);
+
+                        if(true) {//calc NLL
+                            nll_hashing_ids.push_back(h(fn) % opts.N);
+                            nll_hashing_values.push_back(fv);
+                        }
 
                         if(!opts.reignore.empty()) {
                             if (std::regex_search(fn, reignore)) {
@@ -172,10 +212,10 @@ void Stage2<T, S>::run()
                                 fv = std::log(std::max(1e-20, fv));
                             }
                         }
-
                         fns.back().second.push_back(std::pair<std::string, double>(fn, fv));
                     }
                 } else {
+                    hasns = true;
                     //NAMESPACE
                     char dummy;
                     std::istringstream issv(s);
@@ -198,9 +238,10 @@ void Stage2<T, S>::run()
                 nolabel = false;
             }
             free(strs);
-            if(needlabel && nolabel)
+            if(needlabel && nolabel) {
+                console->error("No label. Skipping line #{0}.", lineno);
                 continue;
-
+            }
             //INTERACTIONS
             std::vector<std::pair<size_t, std::vector<size_t>>> interactids;
 
@@ -244,8 +285,15 @@ void Stage2<T, S>::run()
                     auto& fn(fit->first);
                     auto& fv(fit->second);
 
-
                     size_t fid = h(fn) % opts.N;
+
+                    if(!opts.rebaseline.empty()) {
+                        if (fn == opts.rebaseline) {
+                            baselineId = fid;//console->critical("Baseline {0} {1} = {2}", fn, fid, fv);
+                            obuffer_.baselineId = fid;
+                        }
+                    }
+
                     console->debug("Feature [{0}:{1}:{2}]", fn, fid, fv);
                     fids.push_back(std::pair<size_t, double>(fid, fv));
                     if(opts.explain) {
@@ -304,13 +352,23 @@ void Stage2<T, S>::run()
             }
             batchbuf.push_back(std::pair<double, std::vector<std::pair<size_t, double>>>(label, fids));
             descbuf.push_back(ssdesc.str());
+            if(true) {//calc NLL
+                Eigen::Map<VectorXi> vkeys(nll_hashing_ids.data(), nll_hashing_ids.size());
+                Eigen::Map<VectorXd> vvals(nll_hashing_values.data(), nll_hashing_values.size());
+                auto hash1 = std::hash<MatrixXi>()(vkeys);
+                auto hash2 = std::hash<MatrixXd>()(vvals);
+                auto exid = hash1 ^ hash2;
+                nllhashbuf.push_back(exid);
+            }
             delete [] buff;
         }
         if(batchbuf.size() >= static_cast<size_t>(opts.batch) || (batchbuf.size() > 0 && line.empty())) {
 
             Batch batch;
+            batch.baselineId = baselineId;
             auto& nzf = batch.nzf;
             std::copy(descbuf.begin(), descbuf.end(), std::back_inserter(batch.desc));
+            std::copy(nllhashbuf.begin(), nllhashbuf.end(), std::back_inserter(batch.exids));
 
             //nzf mapuje hash index featury na poradove cislo nenulove featury v batchi
 
@@ -353,13 +411,13 @@ void Stage2<T, S>::run()
             obuffer_.add(batch);
             batchbuf.clear();
             descbuf.clear();
+            nllhashbuf.clear();
         }
         if(line.empty())
             break;
     }
     if(interrupted)
         obuffer_.clear();
-    obuffer_.add(S());
 }
 
 template class Stage2<std::string, Batch>;

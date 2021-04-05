@@ -9,6 +9,7 @@ template <class T>
 class Buffer
 {
 public:
+    size_t baselineId;
     void add(const T& num) {
         while (true) {
             std::unique_lock<std::mutex> locker(mu);

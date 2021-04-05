@@ -9,6 +9,9 @@ spdlog:
 boost-bloom-filters:
 	git clone https://github.com/queertypes/boost-bloom-filters.git
 
+tensorboard-logger:
+	git clone https://github.com/RustingSword/tensorboard_logger.git
+
 # osklive, potreba ubalit a dat do zavislosti:
 
 liblbfgs:
@@ -18,5 +21,5 @@ liblbfgs:
     ./configure
 	$(MAKE) -C liblbfgs
 
-deps: spdlog boost-bloom-filters clipp liblbfgs
+deps: spdlog boost-bloom-filters clipp tensorboard-logger
 

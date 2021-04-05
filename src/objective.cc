@@ -78,9 +78,6 @@ std::pair<int, size_t> objective_function::run(VectorXd& w0)
     lbfgs_parameter_t params;
     lbfgs_parameter_init(&params);
 
-    params.epsilon = 1e-2;
-    params.linesearch = LBFGS_LINESEARCH_DEFAULT;
-
     int ret = lbfgs(w0.size(), w, &fx, _evaluate, _progress, this, &params);
 
     /* Report the result. */
@@ -88,7 +85,8 @@ std::pair<int, size_t> objective_function::run(VectorXd& w0)
         console->debug("L-BFGS optimization terminated with status code = {0}, fx = {1}, iterations = {2}", ret, fx, kk);
     }
     else {
-        console->warn("L-BFGS error {0} {3}, fx = {1}, iterations = {2}", ret, fx, kk, lbfgserr[ret + 1024]);
+        ret = 0;
+        //console->warn("L-BFGS error {0} {3}, fx = {1}, iterations = {2}", ret, fx, kk, lbfgserr[ret + 1024]);
     }
     for(int i = 0; i < w0.size(); ++i) {
         w0(i) = w[i];
@@ -101,7 +99,7 @@ std::pair<int, size_t> objective_function::run(VectorXd& w0)
 }
 
 VectorXd objective_function::predict(const VectorXd& wj) {
-    return (1.0 + (-(xx*wj)).array().exp()).inverse().matrix();
+    return (1.0 + (-(xx*wj)).array().min(50.0).max(-50.0).exp()).inverse().matrix();
 }
 
 MatrixXd objective_function::predict_sample(const size_t n) {
@@ -122,6 +120,36 @@ MatrixXd objective_function::predict_sample(const size_t n) {
     }
     return ret;
 }
+/*
+real   4m31.302s
+user   9m1.390s
+sys 0m31.720s
+
+lbfgsfloatval_t objective_function::evaluate(
+    const lbfgsfloatval_t *x,
+    lbfgsfloatval_t *g,
+    const int n,
+    const lbfgsfloatval_t step
+    )
+{
+    Map<const VectorXd> wj(x, xx.cols());
+
+    Map<VectorXd> grad(g, wj.size());
+
+    ArrayXd wjmj(wj - mj);
+    grad = (sj.array()*wjmj).matrix();
+
+    ArrayXd ui((((-(xx*wj)).array().exp() + 1.0).inverse()));
+
+    const double eps = 1e-20;
+
+    double ret = 0.5 * (grad.array()*wjmj).sum() - (label.array() == 0.0).select(1.0 - ui, ui).max(eps).min(1.0-eps).log().sum();
+
+    grad += xx.transpose()*(ui-label.array()).matrix(); //grad
+
+    return ret;
+}
+*/
 
 lbfgsfloatval_t objective_function::evaluate(
     const lbfgsfloatval_t *x,
@@ -138,8 +166,8 @@ lbfgsfloatval_t objective_function::evaluate(
 
     ArrayXd ui((((-(xx*wj)).array().exp() + 1.0).inverse()));
 
-    const double eps = 1e-20;
-    double ret = 0.5 * (sj.array()*grad.array().square()).sum() - (label.array() == 0.0).select(1.0 - ui, ui).max(eps).min(1.0-eps).log().sum();
+    const double eps = 1e-20; //TODO truncated
+    double ret = 0.5 * (sj.array()*grad.array().square()).sum() - (label.array() == 0.0).select(1.0 - ui, ui).log().sum();//;.max(eps).min(1.0-eps).log().sum();
     grad = (sj.array()*grad.array()).matrix() + xx.transpose()*(ui-label.array()).matrix(); //grad
     return ret;
 

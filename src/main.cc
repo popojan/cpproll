@@ -4,7 +4,9 @@
 #include <clipp.h>
 #include <csignal>
 #include <spdlog/spdlog.h>
-#include <spdlog/sinks/stdout_color_sinks.h>
+#include <spdlog/sinks/stdout_sinks.h>
+#include <spdlog/sinks/basic_file_sink.h>
+
 #include "stage1.h"
 #include "stage2.h"
 #include "stage3.h"
@@ -25,7 +27,8 @@ int main(int argc, char* argv[]) {
     std::locale::global(std::locale("C"));
 
     Options opts;
-
+    opts.intercept = 0.5;
+    
     using namespace clipp;
 
     auto cli = (
@@ -59,25 +62,41 @@ int main(int argc, char* argv[]) {
             .doc("regular expression selecting primary features for log transform"),
         (option("--svmlight") & value("file", opts.svmlight))
             .doc("extra file to output feature-hashed data into"),
+        (option("--logfile") & value("file", opts.logfile))
+            .doc("extra file to record logging info into"),
+        (option("--tb") & value("file", opts.tblog))
+            .doc("tensorboard logging file"),
         (option("--ignore") & value("regexp", opts.reignore))
             .doc("regular expression selecting features to be ignored"),
         (option("--keep") & value("regexp", opts.rekeep))
             .doc("regular expression selecting features to be kept"),
+        (option("--baseline") & value("namespace^feature", opts.rebaseline))
+            .doc("single feature considered as a baseline prediction for comparison and logging"),
         (option("-I", "--interactions") & value("a*b*c,x*y", opts.interactions))
             .doc("namespace interactions to be added as additional features"),
         (option("-j", "--jobs") & integer("num", opts.jobs))
             .doc("number of parallel threads processing the data"),
         (option("--l2")  & number("regularization", opts.lambda))
             .doc("regularization lambda (initial precision of the parameters)"),
+        (option("-C", "--constant")  & number("intercept", opts.intercept))
+            .doc("best constant for intercept initialization (average expected label)"),
         (option("--passes") & integer("num", opts.passes))
             .doc("number of passes over the data (uderestimates variance)"),
         (option("-T", "--T") & integer("ms", opts.period))
             .doc("period in milliseconds to regularly output current metrics"),
+        (option("-d", "--decay") & number("experimental variance decay", opts.decay))
+            .doc("variance aging"),
         values("file", opts.files)
     );
 
     if(parse(argc, argv, cli)) {
-        auto console = spdlog::stdout_color_mt("console");
+        std::vector<spdlog::sink_ptr> sinks;
+        sinks.push_back(std::make_shared<spdlog::sinks::ansicolor_stderr_sink_mt>());
+        if(!opts.logfile.empty()) {
+            sinks.push_back(std::make_shared<spdlog::sinks::basic_file_sink_mt>(opts.logfile));
+        }
+        auto console = std::make_shared<spdlog::logger>("console", begin(sinks), end(sinks));
+        spdlog::register_logger(console);
 
         spdlog::set_level(spdlog::level::from_str(opts.verbose));
 
@@ -118,6 +137,7 @@ int main(int argc, char* argv[]) {
         for(int i = 0; i < opts.jobs; ++i) {
             stage2[i].join();
         }
+        b2.add(Batch());
         stage3.join();
 
         spdlog::set_level(spdlog::level::info);

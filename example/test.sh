@@ -1,15 +1,16 @@
 #!/bin/bash
 
+dir=`pwd`
+
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
-DATA_DIR=$DIR/../data
-mkdir -p $DATA_DIR
-cd $DATA_DIR
+mkdir -p $DIR/../data
+cd $DIR/../data
 
 $DIR/../example/generate-dataset.py 20000 5000 666
 
 
-PARAMS=(-b 18 -v info --l2 1e-4 -j 4 -I f*f -B 8 -T 500)
+PARAMS=(-b 18 -v info --l2 1e-4 -j 4 -I f*f -B 1 -T 500)
 
 TRAIN=("${PARAMS[@]}")
 TRAIN+=(-f model -p blr.train.out --passes 3 -- train.dat)

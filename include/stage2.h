@@ -23,6 +23,8 @@ struct Batch {
     Eigen::VectorXd labels;
     std::vector<std::string> desc;
     std::vector<std::string> names;
+    std::vector<size_t> exids;
+    size_t baselineId;
 };
 
 

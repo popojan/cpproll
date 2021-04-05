@@ -26,11 +26,11 @@
 #include <iomanip>
 #include <math.h>
 
-class ROC {
+class AROC {
 public:
 
-  ROC();
-  ~ROC();
+  AROC(int bins = 10000);
+  ~AROC();
 
   void readFile(std::string);
 
@@ -46,6 +46,7 @@ public:
   float getAreaUnderCurve(void);
 
 private:
-  std::vector<std::pair<float,int> > data;
-  void getROCFromData(std::vector<std::pair<float,int> >);
+  const int bins;
+  std::vector<std::pair<size_t,size_t> > data;
+  void getAROCFromData(std::vector<std::pair<size_t,size_t> >);
 };

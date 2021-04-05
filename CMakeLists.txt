@@ -1,4 +1,4 @@
-cmake_minimum_required (VERSION 2.6)
+cmake_minimum_required (VERSION 2.8.12)
 project (roll)
 
 set (roll_VERSION_MAJOR 0)
@@ -33,6 +33,26 @@ if(NOT LBFGS_LIBRARY)
   return()
 endif()
 
+find_path(TENSORBOARD_LOGGER_INCLUDE_DIR
+    NAME tensorboard_logger.h
+    HINTS "${PROJECT_SOURCE_DIR}/deps/tensorboard_logger/include"
+ )
+
+if(NOT TENSORBOARD_LOGGER_INCLUDE_DIR)
+  message(FATAL_ERROR "tensorboard_logger not found\n")
+  return()
+endif()
+
+find_library(TENSORBOARD_LOGGER_LIBRARY
+    NAME libtensorboard_logger.a
+    HINTS "${PROJECT_SOURCE_DIR}/deps/tensorboard_logger"
+)
+
+if(NOT TENSORBOARD_LOGGER_LIBRARY)
+  message(FATAL_ERROR "tensorboard_logger static library not found\n")
+  return()
+endif()
+
 find_path(SPDLOG_INCLUDE_DIR
     NAME spdlog
     HINTS "${PROJECT_SOURCE_DIR}/deps/spdlog/include"
@@ -54,12 +74,12 @@ if(NOT CLIPP_INCLUDE_DIR)
 endif()
 
 find_path(MURMURHASH3_INCLUDE_DIR
-    NAME murmurhash3.hpp
-    HINTS "${PROJECT_SOURCE_DIR}/deps/boost-bloom-filters/boost/bloom_filter/hash"
+    NAME murmur3.h
+    HINTS "${PROJECT_SOURCE_DIR}/deps/murmur3"
 )
 
 if(NOT MURMURHASH3_INCLUDE_DIR)
-  message(FATAL_ERROR "murmurhash3.hpp not found\n")
+  message(FATAL_ERROR "murmur3.h not found\n")
   return()
 endif()
 
@@ -75,16 +95,19 @@ include_directories("${SPDLOG_INCLUDE_DIR}")
 include_directories("${PROJECT_SOURCE_DIR}/include")
 INCLUDE_DIRECTORIES("${EIGEN3_INCLUDE_DIR}")
 INCLUDE_DIRECTORIES("${LBFGS_INCLUDE_DIR}")
+INCLUDE_DIRECTORIES("${TENSORBOARD_LOGGER_INCLUDE_DIR}")
 
-set (EXTRA_LIBS ${EXTRA_LIBS} pthread ${LBFGS_LIBRARY} ${Boost_LIBRARIES})
+set (EXTRA_LIBS ${EXTRA_LIBS} pthread protobuf ${LBFGS_LIBRARY} ${Boost_LIBRARIES} ${TENSORBOARD_LOGGER_LIBRARY})
 
 add_executable (roll
+    ${MURMURHASH3_INCLUDE_DIR}/murmur3.c
     src/main.cc
     src/objective.cc
     src/stage1.cc
     src/stage2.cc
     src/stage3.cc
-    src/roc.cc
+    src/aroc.cc
+    src/nll.cc
     src/parse.cc
 )
 
