@@ -1,37 +1,16 @@
-cmake_minimum_required (VERSION 2.8.12)
+cmake_minimum_required (VERSION 3.1)
 project (roll)
 
 set (roll_VERSION_MAJOR 0)
 set (roll_VERSION_MINOR 1)
 
+set_target_properties(PROPERTIES CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -Wall -Wno-int-in-bool-context")
 
-SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -Wall -Wno-int-in-bool-context")
+list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
 
-option(HELLOWORLD "Salute toggle" ON)
-
-find_package(Eigen3)
-
-FIND_PACKAGE(Boost 1.40 COMPONENTS serialization iostreams REQUIRED)
-
-find_path(LBFGS_INCLUDE_DIR
-    NAME lbfgs.h
-    HINTS "${PROJECT_SOURCE_DIR}/deps/liblbfgs/include"
- )
-
-if(NOT LBFGS_INCLUDE_DIR)
-  message(FATAL_ERROR "lbfgs not found\n")
-  return()
-endif()
-
-find_library(LBFGS_LIBRARY
-    NAME liblbfgs.so
-    HINTS "${PROJECT_SOURCE_DIR}/deps/liblbfgs/lib/.libs"
-)
-
-if(NOT LBFGS_LIBRARY)
-  message(FATAL_ERROR "lbfgs static library not found\n")
-  return()
-endif()
+find_package(Eigen3 REQUIRED)
+find_package(LibLBFGS REQUIRED)
+find_package(Boost COMPONENTS serialization iostreams REQUIRED)
 
 find_path(TENSORBOARD_LOGGER_INCLUDE_DIR
     NAME tensorboard_logger.h
@@ -89,29 +68,31 @@ configure_file (
   "${PROJECT_BINARY_DIR}/config.h"
 )
 
-include_directories("${CLIPP_INCLUDE_DIR}")
-include_directories("${MURMURHASH3_INCLUDE_DIR}")
-include_directories("${SPDLOG_INCLUDE_DIR}")
-include_directories("${PROJECT_SOURCE_DIR}/include")
-INCLUDE_DIRECTORIES("${EIGEN3_INCLUDE_DIR}")
-INCLUDE_DIRECTORIES("${LBFGS_INCLUDE_DIR}")
-INCLUDE_DIRECTORIES("${TENSORBOARD_LOGGER_INCLUDE_DIR}")
+add_executable (${PROJECT_NAME}
+        ${MURMURHASH3_INCLUDE_DIR}/murmur3.c
+        src/main.cc
+        src/objective.cc
+        src/stage1.cc
+        src/stage2.cc
+        src/stage3.cc
+        src/aroc.cc
+        src/nll.cc
+        src/parse.cc
+        )
 
-set (EXTRA_LIBS ${EXTRA_LIBS} pthread protobuf ${LBFGS_LIBRARY} ${Boost_LIBRARIES} ${TENSORBOARD_LOGGER_LIBRARY})
+target_include_directories(${PROJECT_NAME} PRIVATE ${CLIPP_INCLUDE_DIR})
+target_include_directories(${PROJECT_NAME} PRIVATE ${MURMURHASH3_INCLUDE_DIR})
+target_include_directories(${PROJECT_NAME} PRIVATE ${SPDLOG_INCLUDE_DIR})
+target_include_directories(${PROJECT_NAME} PRIVATE ${PROJECT_SOURCE_DIR}/include)
+target_include_directories(${PROJECT_NAME} PRIVATE ${EIGEN3_INCLUDE_DIR})
+target_include_directories(${PROJECT_NAME} PRIVATE ${LIBLBFGS_INCLUDE_DIR})
+target_include_directories(${PROJECT_NAME} PRIVATE ${TENSORBOARD_LOGGER_INCLUDE_DIR})
 
-add_executable (roll
-    ${MURMURHASH3_INCLUDE_DIR}/murmur3.c
-    src/main.cc
-    src/objective.cc
-    src/stage1.cc
-    src/stage2.cc
-    src/stage3.cc
-    src/aroc.cc
-    src/nll.cc
-    src/parse.cc
-)
+set (EXTRA_LIBS ${EXTRA_LIBS} pthread protobuf ${LIBLBFGS_LIBRARY} ${Boost_LIBRARIES} ${TENSORBOARD_LOGGER_LIBRARY})
 
-target_link_libraries (roll ${EXTRA_LIBS})
+target_link_libraries (${PROJECT_NAME} ${EXTRA_LIBS})
+
+set_target_properties(${PROJECT_NAME} PROPERTIES OUTPUT_NAME "cpproll")
 
 install (TARGETS roll DESTINATION bin)
 install (FILES "${PROJECT_BINARY_DIR}/config.h"

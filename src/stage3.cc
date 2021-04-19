@@ -265,14 +265,11 @@ void Stage3<T>::run() {
             duration_sum += duration.count();
             duration_den += k;
             iterations_sum += ret.second;
-            //TODO failed experiments with variance decay
-            //const double decay = opts.decay;
-            //sj = (sj.array()*decay + (1.0-decay)).matrix();
             if(ret.first == 0) {
                 auto ui = f.predict(w);
                 auto uio = (ui.array()*(1.0 - ui.array()));
                 //TODO 
-                VectorXd s((sjt + batch.x.array().square().matrix().transpose()*uio.matrix()).array()); //.max(1.0/opts.lambda).matrix());
+                VectorXd s(sjt + (batch.x.array().square().matrix().transpose()*uio.matrix()));
                 for(auto it = batch.nzf.begin(); it != batch.nzf.end(); ++it) {
                     mj(it->first) = w(it->second);
                     sj(it->first) = s(it->second);

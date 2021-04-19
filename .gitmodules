@@ -1,12 +1,12 @@
 [submodule "deps/clipp"]
 	path = deps/clipp
-	url = https://github.com/muellan/clipp.git
+	url = ../../muellan/clipp.git
 [submodule "deps/spdlog"]
 	path = deps/spdlog
-	url = https://github.com/gabime/spdlog.git
+	url = ../../gabime/spdlog.git
 [submodule "deps/tensorboard_logger"]
 	path = deps/tensorboard_logger
-	url = https://github.com/RustingSword/tensorboard_logger.git
+	url = ../../RustingSword/tensorboard_logger.git
 [submodule "deps/murmur3"]
 	path = deps/murmur3
-	url = https://github.com/PeterScott/murmur3
+	url = ../../PeterScott/murmur3

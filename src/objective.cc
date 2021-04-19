@@ -85,8 +85,7 @@ std::pair<int, size_t> objective_function::run(VectorXd& w0)
         console->debug("L-BFGS optimization terminated with status code = {0}, fx = {1}, iterations = {2}", ret, fx, kk);
     }
     else {
-        ret = 0;
-        //console->warn("L-BFGS error {0} {3}, fx = {1}, iterations = {2}", ret, fx, kk, lbfgserr[ret + 1024]);
+        console->warn("L-BFGS error {0} {3}, fx = {1}, iterations = {2}", ret, fx, kk, lbfgserr[ret + 1024]);
     }
     for(int i = 0; i < w0.size(); ++i) {
         w0(i) = w[i];
